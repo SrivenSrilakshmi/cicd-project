@@ -6,6 +6,7 @@ pipeline {
         DOCKER_IMAGE = "sriven0309/java-app"
         SONAR_HOST_URL = "http://sonarqube:9000"
         SONAR_PROJECT_KEY = "java-app"
+        KUBECONFIG = "/var/jenkins_home/.kube/config"
     }
 
     stages {
@@ -28,20 +29,21 @@ pipeline {
         }
 
         stage('Analyze Code with SonarQube') {
-    steps {
-        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-            sh '''
-                mvn sonar:sonar \
-                  -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                  -Dsonar.host.url=${SONAR_HOST_URL} \
-                  -Dsonar.login=${SONAR_TOKEN}
-            '''
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        mvn sonar:sonar \
+                          -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                          -Dsonar.host.url=${SONAR_HOST_URL} \
+                          -Dsonar.login=${SONAR_TOKEN}
+                    '''
+                }
+            }
         }
-    }
-}
+
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE:latest .'
+                sh 'docker build -t ${DOCKER_IMAGE}:latest .'
             }
         }
 
@@ -50,7 +52,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push $DOCKER_IMAGE:latest
+                        docker push ${DOCKER_IMAGE}:latest
                     '''
                 }
             }
@@ -58,9 +60,23 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh 'kubectl apply -f deployment.yaml'
-                sh 'kubectl rollout restart deployment/java-app'
+                sh '''
+                    kubectl --kubeconfig /var/jenkins_home/.kube/config apply -f deployment.yaml
+                    kubectl --kubeconfig /var/jenkins_home/.kube/config rollout restart deployment/java-app
+                '''
             }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
+        }
+        success {
+            echo 'CI/CD pipeline completed successfully.'
+        }
+        failure {
+            echo 'Pipeline failed. Check the stage logs above.'
         }
     }
 }
