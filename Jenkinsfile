@@ -70,8 +70,12 @@ pipeline {
         stage('Deploy with Helm') {
             steps {
                 sh '''
-                    helm upgrade --install java-app ./java-app-chart --kubeconfig /var/jenkins_home/.kube/config
-                    kubectl --kubeconfig /var/jenkins_home/.kube/config rollout status deployment/java-app
+                    cp /var/jenkins_home/.kube/config /tmp/kubeconfig-jenkins
+
+                    perl -0pi -e 's#C:/Users/srive/.minikube#/var/jenkins_home/.minikube#g; s#C:\\Users\\srive\\.minikube#/var/jenkins_home/.minikube#g; s#\\\\#/#g; s#https://127.0.0.1:1553#https://192.168.49.2:8443#g' /tmp/kubeconfig-jenkins
+
+                    helm upgrade --install java-app ./java-app-chart --kubeconfig /tmp/kubeconfig-jenkins
+                    kubectl --kubeconfig /tmp/kubeconfig-jenkins rollout status deployment/java-app
                 '''
             }
         }
