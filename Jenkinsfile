@@ -10,6 +10,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout Code') {
             steps {
                 checkout scm
@@ -46,13 +47,14 @@ pipeline {
                 sh 'docker build -t ${DOCKER_IMAGE}:latest .'
             }
         }
-stage('Security Scan with Trivy') {
-    steps {
-        sh '''
-            docker run --rm aquasec/trivy:0.69.3 image ${DOCKER_IMAGE}:latest
-        '''
-    }
-}
+
+        stage('Security Scan with Trivy') {
+            steps {
+                sh '''
+                    docker run --rm aquasec/trivy:0.69.3 image ${DOCKER_IMAGE}:latest
+                '''
+            }
+        }
 
         stage('Push Docker Image') {
             steps {
@@ -65,11 +67,11 @@ stage('Security Scan with Trivy') {
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Deploy with Helm') {
             steps {
                 sh '''
-                    kubectl --kubeconfig /var/jenkins_home/.kube/config apply -f deployment.yaml
-                    kubectl --kubeconfig /var/jenkins_home/.kube/config rollout restart deployment/java-app
+                    helm upgrade --install java-app ./java-app-chart --kubeconfig /var/jenkins_home/.kube/config
+                    kubectl --kubeconfig /var/jenkins_home/.kube/config rollout status deployment/java-app
                 '''
             }
         }
@@ -83,7 +85,7 @@ stage('Security Scan with Trivy') {
             echo 'CI/CD pipeline completed successfully.'
         }
         failure {
-            echo 'Pipeline failed. Check the stage logs above.'
+            echo 'Pipeline failed. Check logs.'
         }
     }
 }
