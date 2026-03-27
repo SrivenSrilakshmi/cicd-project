@@ -46,6 +46,13 @@ pipeline {
                 sh 'docker build -t ${DOCKER_IMAGE}:latest .'
             }
         }
+stage('Security Scan with Trivy') {
+    steps {
+        sh '''
+            docker run --rm aquasec/trivy:0.69.3 image ${DOCKER_IMAGE}:latest
+        '''
+    }
+}
 
         stage('Push Docker Image') {
             steps {
