@@ -1,0 +1,18 @@
+replicaCount: 2
+
+image:
+  repository: sriven0309/java-app
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: NodePort
+  port: 80
+  targetPort: 8080
+  nodePort: 30080
+
+nameOverride: ""
+fullnameOverride: "java-app"
+
+autoscaling:
+  enabled: false
