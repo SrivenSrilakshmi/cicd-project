@@ -63,11 +63,12 @@ pipeline {
         }
 
         stage('Deploy with Helm') {
-            steps {
-                bat 'helm upgrade --install java-app .\\java-app-chart --kubeconfig %USERPROFILE%\\.kube\\config'
-                bat 'kubectl --kubeconfig %USERPROFILE%\\.kube\\config rollout status deployment/java-app'
-            }
-        }
+    steps {
+        bat '"C:\\Users\\srive\\AppData\\Local\\Microsoft\\WinGet\\Links\\helm.exe" version'
+        bat '"C:\\Users\\srive\\AppData\\Local\\Microsoft\\WinGet\\Links\\helm.exe" upgrade --install java-app .\\java-app-chart --kubeconfig %USERPROFILE%\\.kube\\config'
+        bat 'kubectl --kubeconfig %USERPROFILE%\\.kube\\config rollout status deployment/java-app'
+    }
+}
     }
 
     post {
