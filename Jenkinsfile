@@ -1,12 +1,11 @@
 pipeline {
-    agent any
+    agent { label 'docker-agent' }
 
     environment {
         APP_NAME = "java-app"
         DOCKER_IMAGE = "sriven0309/java-app"
-        SONAR_HOST_URL = "http://sonarqube:9000"
+        SONAR_HOST_URL = "http://localhost:9000"
         SONAR_PROJECT_KEY = "java-app"
-        KUBECONFIG = "/var/jenkins_home/.kube/config"
     }
 
     stages {
@@ -19,64 +18,54 @@ pipeline {
 
         stage('Build Java Application') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                bat 'mvn clean package -DskipTests'
             }
         }
 
         stage('Run Unit Tests') {
             steps {
-                sh 'mvn test'
+                bat 'mvn test'
             }
         }
 
         stage('Analyze Code with SonarQube') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        mvn sonar:sonar \
-                          -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                          -Dsonar.host.url=${SONAR_HOST_URL} \
-                          -Dsonar.login=${SONAR_TOKEN}
-                    '''
+                    bat """
+                        mvn sonar:sonar ^
+                          -Dsonar.projectKey=%SONAR_PROJECT_KEY% ^
+                          -Dsonar.host.url=%SONAR_HOST_URL% ^
+                          -Dsonar.login=%SONAR_TOKEN%
+                    """
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${DOCKER_IMAGE}:latest .'
+                bat 'docker build -t %DOCKER_IMAGE%:latest .'
             }
         }
 
         stage('Security Scan with Trivy') {
             steps {
-                sh '''
-                    docker run --rm aquasec/trivy:0.69.3 image ${DOCKER_IMAGE}:latest
-                '''
+                bat 'docker run --rm aquasec/trivy:0.69.3 image %DOCKER_IMAGE%:latest'
             }
         }
 
         stage('Push Docker Image') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ${DOCKER_IMAGE}:latest
-                    '''
+                    bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                    bat 'docker push %DOCKER_IMAGE%:latest'
                 }
             }
         }
 
         stage('Deploy with Helm') {
             steps {
-                sh '''
-                    cp /var/jenkins_home/.kube/config /tmp/kubeconfig-jenkins
-
-                    perl -0pi -e 's#C:/Users/srive/.minikube#/var/jenkins_home/.minikube#g; s#C:\\Users\\srive\\.minikube#/var/jenkins_home/.minikube#g; s#\\\\#/#g; s#https://127.0.0.1:1553#https://192.168.49.2:8443#g' /tmp/kubeconfig-jenkins
-
-                    helm upgrade --install java-app ./java-app-chart --kubeconfig /tmp/kubeconfig-jenkins
-                    kubectl --kubeconfig /tmp/kubeconfig-jenkins rollout status deployment/java-app
-                '''
+                bat 'helm upgrade --install java-app .\\java-app-chart --kubeconfig %USERPROFILE%\\.kube\\config'
+                bat 'kubectl --kubeconfig %USERPROFILE%\\.kube\\config rollout status deployment/java-app'
             }
         }
     }
