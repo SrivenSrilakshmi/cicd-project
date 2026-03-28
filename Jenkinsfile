@@ -62,11 +62,9 @@ pipeline {
             }
         }
 
-        stage('Deploy with Helm') {
+       stage('GitOps Trigger Info') {
     steps {
-        bat '"C:\\Users\\srive\\AppData\\Local\\Microsoft\\WinGet\\Links\\helm.exe" version'
-        bat '"C:\\Users\\srive\\AppData\\Local\\Microsoft\\WinGet\\Links\\helm.exe" upgrade --install java-app .\\java-app-chart --kubeconfig %USERPROFILE%\\.kube\\config'
-        bat 'kubectl --kubeconfig %USERPROFILE%\\.kube\\config rollout status deployment/java-app'
+        echo 'Image pushed to Docker Hub. Argo CD will sync Kubernetes from Git.'
     }
 }
     }
